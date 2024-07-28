@@ -1,31 +1,36 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { SafeAreaView, StyleSheet, BackHandler } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-const InstagramWebView: React.FC = () => {
+const InstagramWebView = forwardRef((props, ref) => {
   const [currentUrl, setCurrentUrl] = useState('https://www.instagram.com/accounts/login/');
   const [canGoBack, setCanGoBack] = useState(false);
   const webviewRef = useRef<WebView>(null);
+
+  useImperativeHandle(ref, () => ({
+    reload: () => {
+      if (webviewRef.current) {
+        webviewRef.current.reload();
+      }
+    },
+  }));
 
   const onNavigationStateChange = (navState: any) => {
     const { url, canGoBack } = navState;
 
     setCanGoBack(canGoBack);
 
-    if (url.includes('/accounts/login/')) {
-      // Allow login page
-      setCurrentUrl(url);
-    } else if (url.includes('/direct/inbox/')) {
-      // Allow DM page
-      setCurrentUrl(url);
-    } else if (url.includes('/direct/t/')) {
-      // Allow individual message threads
-      setCurrentUrl(url);
-    } else if (url.includes('/p/')) {
-      // Allow individual posts
+    if (
+      url.includes('/accounts/login/') ||
+      url.includes('/direct/inbox/') ||
+      url.includes('/direct/t/') ||
+      url.includes('/p/') ||
+      url.includes('/direct/new/') ||
+      url.includes('/stories/') ||
+      /^https:\/\/www\.instagram\.com\/[^\/]+\/$/.test(url) // This regex allows any URL that ends with a username
+    ) {
       setCurrentUrl(url);
     } else {
-      // Redirect to DM page if on any other page
       if (webviewRef.current) {
         webviewRef.current.stopLoading();
         webviewRef.current.injectJavaScript(`window.location.href = 'https://www.instagram.com/direct/inbox/';`);
@@ -35,13 +40,16 @@ const InstagramWebView: React.FC = () => {
 
   const onShouldStartLoadWithRequest = (request: any) => {
     const { url } = request;
-    console.log('Attempting to load URL:', url);  // Log the URL being attempted
+    console.log('Attempting to load URL:', url);
 
     if (
       url.includes('/accounts/login/') ||
       url.includes('/direct/inbox/') ||
       url.includes('/direct/t/') ||
-      url.includes('/p/')
+      url.includes('/p/') ||
+      url.includes('/direct/new/') ||
+      url.includes('/stories/') ||
+      /^https:\/\/www\.instagram\.com\/[^\/]+\/$/.test(url) // This regex allows any URL that ends with a username
     ) {
       return true; // Allow navigation
     } else {
@@ -94,11 +102,11 @@ const InstagramWebView: React.FC = () => {
         javaScriptEnabled
         domStorageEnabled
         startInLoadingState
-        injectedJavaScript={injectedJavaScript} // Inject JavaScript to intercept window.open and anchor clicks
+        injectedJavaScript={injectedJavaScript}
       />
     </SafeAreaView>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
